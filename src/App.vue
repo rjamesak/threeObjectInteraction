@@ -1,19 +1,21 @@
 <template>
   <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <threeWorld></threeWorld>
+    <!-- <threeExamples></threeExamples> -->
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import threeWorld from "./components/threeWorld.vue";
+// import threeExamples from "./components/threeExamples.vue";
 
 export default {
-  name: 'App',
+  name: "App",
   components: {
-    HelloWorld
-  }
-}
+    threeWorld,
+    // threeExamples,
+  },
+};
 </script>
 
 <style>
@@ -23,6 +25,9 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  overflow: hidden;
 }
 </style>
