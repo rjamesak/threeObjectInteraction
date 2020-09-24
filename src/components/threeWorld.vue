@@ -13,6 +13,8 @@ export default {
       down: false,
       then: 0,
       clicked: false,
+      isTravelling: false,
+      travellingObject: {},
     };
   },
   methods: {
@@ -70,6 +72,7 @@ export default {
 
       this.distanceFromCamera = 2;
       if (this.picked) {
+        //if something was picked LAST FRAME
         this.picked.material.emissive = this.pickedSavedColor;
         this.picked = null;
       }
@@ -78,15 +81,12 @@ export default {
         this.picked = intersects[0].object;
         this.pickedSavedColor = this.picked.material.emissive;
         this.picked.material.emissive = this.yellow;
-        const target = new THREE.Vector3(0, 0, -this.distanceFromCamera);
-        target.applyMatrix4(this.camera.matrixWorld);
-        const moveSpeed = 15;
-        const distance = this.picked.position.distanceTo(target);
-        if (distance > 0 && this.clicked) {
-          //TODO send object to function that performs the move
-          this.clicked = false;
-          const amount = Math.min(moveSpeed * deltaTime, distance) / distance;
-          this.picked.position.lerp(target, amount);
+        //move to travel function
+        if (this.clicked) {
+          this.objectSavedPosition = this.picked.position;
+          this.isTravelling = true;
+          this.travellingObject = this.picked;
+          //   this.clicked = false;
         }
 
         // console.log("picked: ", this.picked.material.emissive);
@@ -94,10 +94,22 @@ export default {
         // this.camera.lookAt(this.picked.position);
         // this.controls.target = this.picked.position;
         // console.log("camera pos: ", this.camera.position);
-      } else if (this.picked !== null) {
-        this.picked.material.emissive = this.black;
+      }
+      if (this.isTravelling) {
+        const target = new THREE.Vector3(0, 0, -this.distanceFromCamera);
+        target.applyMatrix4(this.camera.matrixWorld);
+        const moveSpeed = 15;
+        const distance = this.travellingObject.position.distanceTo(target);
+        const amount = Math.min(moveSpeed * deltaTime, distance) / distance;
+        if (distance) {
+          console.log(distance);
+          this.travellingObject.position.lerp(target, amount);
+        } else {
+          this.isTravelling = false;
+        }
       }
 
+      this.clicked = false;
       this.controls.update();
 
       this.renderer.render(this.scene, this.camera);
