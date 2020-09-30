@@ -15,6 +15,8 @@ export default {
       clicked: false,
       isTravelling: false,
       travellingObject: {},
+      isMovingBack: false,
+      hasTravelled: false,
     };
   },
   methods: {
@@ -55,7 +57,7 @@ export default {
       now *= 0.001; //convert ms to s
       const deltaTime = now - this.then;
       this.then = now;
-      this.controls.enabled = true;
+      //   this.controls.enabled = true;
 
       if (this.resizeRendererToDisplaySize(this.renderer)) {
         const canvas = this.renderer.domElement;
@@ -77,16 +79,20 @@ export default {
         this.picked = null;
       }
       if (intersects.length) {
-        this.controls.enabled = false;
+        // this.controls.enabled = false;
         this.picked = intersects[0].object;
         this.pickedSavedColor = this.picked.material.emissive;
         this.picked.material.emissive = this.yellow;
         //move to travel function
-        if (this.clicked) {
+        if (this.clicked && !this.hasTravelled) {
           this.objectSavedPosition = this.picked.position;
           this.isTravelling = true;
+          this.hasTravelled = true;
           this.travellingObject = this.picked;
           //   this.clicked = false;
+        } else if (this.clicked && this.hasTravelled) {
+          this.isMovingBack = true;
+          this.travellingObject = this.picked;
         }
 
         // console.log("picked: ", this.picked.material.emissive);
@@ -101,11 +107,26 @@ export default {
         const moveSpeed = 15;
         const distance = this.travellingObject.position.distanceTo(target);
         const amount = Math.min(moveSpeed * deltaTime, distance) / distance;
-        if (distance) {
+        if (distance > 0) {
           console.log(distance);
           this.travellingObject.position.lerp(target, amount);
         } else {
           this.isTravelling = false;
+          this.controls.target = this.travellingObject.position;
+        }
+      }
+      //TODO ADD Code to move object back to saved position
+      if (this.isMovingBack) {
+        const target = this.objectSavedPosition;
+        target.applyMatrix4(this.camera.matrixWorld);
+        const moveSpeed = 15;
+        const distance = this.travellingObject.position.distanceTo(target);
+        const amount = Math.min(moveSpeed * deltaTime, distance) / distance;
+        if (distance > 0) {
+          this.travellingObject.position.lerp(target, amount);
+        } else {
+          this.isMovingBack = false;
+          this.controls.target = this.travellingObject.position;
         }
       }
 
