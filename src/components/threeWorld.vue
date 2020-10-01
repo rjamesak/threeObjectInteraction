@@ -17,6 +17,7 @@ export default {
       travellingObject: {},
       isMovingBack: false,
       hasTravelled: false,
+      objectSavedPosition: {},
     };
   },
   methods: {
@@ -80,17 +81,21 @@ export default {
       }
       if (intersects.length) {
         // this.controls.enabled = false;
+        //grab the intersected object
         this.picked = intersects[0].object;
         this.pickedSavedColor = this.picked.material.emissive;
         this.picked.material.emissive = this.yellow;
         //move to travel function
         if (this.clicked && !this.hasTravelled) {
+          this.clicked = false;
           this.objectSavedPosition = this.picked.position;
+          console.log("pos: ", this.objectSavedPosition);
           this.isTravelling = true;
           this.hasTravelled = true;
           this.travellingObject = this.picked;
           //   this.clicked = false;
         } else if (this.clicked && this.hasTravelled) {
+          this.clicked = false;
           this.isMovingBack = true;
           this.travellingObject = this.picked;
         }
@@ -113,12 +118,19 @@ export default {
         } else {
           this.isTravelling = false;
           this.controls.target = this.travellingObject.position;
+          //to debug: saved position is getting updated with travel.
+          console.log("saved pos after travel: ", this.objectSavedPosition);
+          console.log(
+            "travelling object pos: ",
+            this.travellingObject.position
+          );
         }
       }
       //TODO ADD Code to move object back to saved position
       if (this.isMovingBack) {
-        const target = this.objectSavedPosition;
-        target.applyMatrix4(this.camera.matrixWorld);
+        // const target = this.objectSavedPosition;
+        const target = new THREE.Vector3(0, 0, 0);
+        // target.applyMatrix4(this.camera.matrixWorld);
         const moveSpeed = 15;
         const distance = this.travellingObject.position.distanceTo(target);
         const amount = Math.min(moveSpeed * deltaTime, distance) / distance;
@@ -126,6 +138,7 @@ export default {
           this.travellingObject.position.lerp(target, amount);
         } else {
           this.isMovingBack = false;
+          this.hasTravelled = false;
           this.controls.target = this.travellingObject.position;
         }
       }
