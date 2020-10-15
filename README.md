@@ -27,5 +27,6 @@ See [Configuration Reference](https://cli.vuejs.org/config/).
 See https://threejs.org/docs/#manual/en/introduction/How-to-run-things-locally
 for info on running locally. 
 I serve the 3d object from the serve folder with http-server using command
+```
 http-server . -p 8000 --cors
-
+```
