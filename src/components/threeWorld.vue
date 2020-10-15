@@ -1,11 +1,14 @@
 <template>
-  <canvas id="c" ref="c"></canvas>
+  <canvas id="c" ref="c">
+    <!-- <div id="guiBlock"></div> -->
+  </canvas>
 </template>
 
 <script>
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import {GUI} from "three/examples/js/libs/dat.gui.min.js"
 export default {
   name: "threeWorld",
   data() {
@@ -18,6 +21,11 @@ export default {
       isMovingBack: false,
       hasTravelled: false,
       objectSavedPosition: {},
+      guiParams: {
+        xPos: 0, 
+        yPos: 0, 
+        zPos: 0
+      }
     };
   },
   methods: {
@@ -26,6 +34,8 @@ export default {
       this.renderer = new THREE.WebGLRenderer({ canvas });
       this.createCamera();
       this.scene = new THREE.Scene();
+      this.homeTarget = new THREE.Vector3(0, 0, 0);
+      this.baseQuaternion = new THREE.Quaternion(0, 0, 0, 1);
       this.scene.background = new THREE.Color(0xaaaaaa);
       this.addLight();
       this.yellow = new THREE.Color("yellow");
@@ -33,11 +43,21 @@ export default {
       this.setControls();
       this.initEventListeners();
       this.initRaycaster();
+
+      // LOAD 3D Object (fire Extinguisher)
       this.loadGltf();
-      //   this.createBox();
+      this.createBox();
+      this.gui = new GUI();
+
+      // GUI STUFF, updates reactive data
+      //https://github.com/dataarts/dat.gui/blob/master/API.md
+      this.gui.add(this.guiParams, 'xPos', -10, 10, 1).name('x position').onChange(this.updatePosition)
+      this.gui.add(this.guiParams, 'yPos', -10, 10, 1).name('y position').onChange(this.updatePosition)
+      this.gui.add(this.guiParams, 'zPos', -10, 10, 1).name('z position').onChange(this.updatePosition)
+
       //   this.loadTextures();
       //   this.loadTexture();
-      //   this.createBoxGeometry(1, 1, 1);
+      // this.createBoxGeometry(1, 1, 1);
       //   this.coneGeometry = new THREE.ConeBufferGeometry(0.5, 1.5, 20);
       //   this.cubes = [];
       //   this.loadManager.onLoad = () => {
@@ -74,13 +94,15 @@ export default {
       );
 
       this.distanceFromCamera = 2;
+      // Check if something was previously picked
       if (this.picked) {
-        //if something was picked LAST FRAME
+        //if something was picked LAST FRAME, remove the highlighting
         this.picked.material.emissive = this.pickedSavedColor;
         this.picked = null;
       }
+
+      // something is picked
       if (intersects.length) {
-        // this.controls.enabled = false;
         //grab the intersected object
         this.picked = intersects[0].object;
         this.pickedSavedColor = this.picked.material.emissive;
@@ -89,9 +111,10 @@ export default {
         if (this.clicked && !this.hasTravelled) {
           this.clicked = false;
           this.objectSavedPosition = this.picked.position;
-          console.log("pos: ", this.objectSavedPosition);
+          this.savedQuaternion = this.picked.quaternion;
+          // console.log("pos: ", this.objectSavedPosition);
           this.isTravelling = true;
-          this.hasTravelled = true;
+          // this.hasTravelled = true;
           this.travellingObject = this.picked;
           //   this.clicked = false;
         } else if (this.clicked && this.hasTravelled) {
@@ -107,42 +130,79 @@ export default {
         // console.log("camera pos: ", this.camera.position);
       }
       if (this.isTravelling) {
+        // code from gman
+        // https://stackoverflow.com/questions/59638065/three-js-move-an-object-to-front-of-camera
         const target = new THREE.Vector3(0, 0, -this.distanceFromCamera);
+        console.log("target pos1:", target);
+        this.camera.updateMatrixWorld();
         target.applyMatrix4(this.camera.matrixWorld);
+        console.log("camera matrixWorld: ", this.camera.matrixWorld);
+        console.log("targeta after matrix: ", target);
         const moveSpeed = 15;
         const distance = this.travellingObject.position.distanceTo(target);
         const amount = Math.min(moveSpeed * deltaTime, distance) / distance;
         if (distance > 0) {
-          console.log(distance);
+          console.log("distance: ", distance);
           this.travellingObject.position.lerp(target, amount);
         } else {
           this.isTravelling = false;
+          this.hasTravelled = true;
           this.controls.target = this.travellingObject.position;
           //to debug: saved position is getting updated with travel.
-          console.log("saved pos after travel: ", this.objectSavedPosition);
-          console.log(
-            "travelling object pos: ",
-            this.travellingObject.position
-          );
+          // console.log("saved pos after travel: ", this.objectSavedPosition);
+          // console.log(
+          //   "travelling object pos: ",
+          //   this.travellingObject.position
+          // );
+          // console.log(
+          //   "quaternion after travel: ",
+          //   this.travellingObject.quaternion
+          // );
         }
       }
-      //TODO ADD Code to move object back to saved position
+
+      //MOVING BACK CODE, position is hard coded
       if (this.isMovingBack) {
         // const target = this.objectSavedPosition;
-        const target = new THREE.Vector3(0, 0, 0);
+        // const target = new THREE.Vector3(0, 0, 0);// move to main, only create once
         // target.applyMatrix4(this.camera.matrixWorld);
         const moveSpeed = 15;
-        const distance = this.travellingObject.position.distanceTo(target);
+        const distance = this.travellingObject.position.distanceTo(
+          this.homeTarget
+        );
         const amount = Math.min(moveSpeed * deltaTime, distance) / distance;
         if (distance > 0) {
-          this.travellingObject.position.lerp(target, amount);
+          this.travellingObject.position.lerp(this.homeTarget, amount);
+          // this.travellingObject.quaternion.rotateTowards(
+          //   this.baseQuaternion,
+          //   3
+          // );
         } else {
           this.isMovingBack = false;
           this.hasTravelled = false;
+          this.controls.enabled = true;
           this.controls.target = this.travellingObject.position;
         }
       }
 
+      // object has moved in front of camera
+      if (this.hasTravelled) {
+        //disable orbit controls
+        this.controls.enabled = false;
+
+        // rotate the object when mouse clicked
+        if (this.down) {
+          // TODO: learn more about quaternions for rotation, commented code below looks
+          // kinda funny...
+          // this.travellingObject.quaternion.y += this.mouse.x - this.lastMouseX;
+          // this.travellingObject.quaternion.x += this.lastMouseY - this.mouse.y;
+          this.travellingObject.rotateY((this.mouse.x - this.lastMouseX)*2)
+          this.travellingObject.rotateX(this.lastMouseY - this.mouse.y)
+        }
+      }
+
+      this.lastMouseX = this.mouse.x;
+      this.lastMouseY = this.mouse.y;
       this.clicked = false;
       this.controls.update();
 
@@ -212,11 +272,13 @@ export default {
       console.log("click!");
     },
     loadGltf() {
+      this.FE = {}
       this.gltfLoader = new GLTFLoader();
       const url = "http://localhost:8000/scene.gltf";
       this.gltfLoader.load(
         url,
         (gltf) => {
+          this.FE = gltf.scene
           const root = gltf.scene;
           this.scene.add(root);
         },
@@ -258,15 +320,15 @@ export default {
       ];
     },
     createBox() {
-      const boxWidth = 1;
-      const boxHeight = 1;
-      const boxDepth = 1;
+      const boxWidth = 0.5;
+      const boxHeight = 0.5;
+      const boxDepth = 0.5;
       const geometry = new THREE.BoxBufferGeometry(
         boxWidth,
         boxHeight,
         boxDepth
       );
-      //   const material = new THREE.MeshPhongMaterial({ color: 0x44aa88 }); //phong material is affected by light
+      this.material = new THREE.MeshPhongMaterial({ color: 0x44aa88 }); //phong material is affected by light
       this.cubeMesh = new THREE.Mesh(geometry, this.material);
       this.scene.add(this.cubeMesh);
     },
@@ -281,6 +343,11 @@ export default {
 
       return cubeMesh;
     },
+    updatePosition() {
+      this.FE.position.x = this.guiParams.xPos
+      this.FE.position.y = this.guiParams.yPos
+      this.FE.position.z = this.guiParams.zPos
+    }
   },
   mounted() {
     this.main();
